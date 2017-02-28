@@ -17,7 +17,9 @@ var gulp = require('gulp'),
     connect     = require('gulp-connect'),
     livereload = require('gulp-livereload'),
     del = require('del'),
-    deploy = require('gulp-gh-pages');
+    deploy = require('gulp-gh-pages'),
+    sourcemaps = require('gulp-sourcemaps'),
+    babel = require('gulp-babel');
 
 gulp.task('fileinclude', function() {
   return  gulp.src(['src/index.html', 'src/iframe.html', 'src/CNAME', 'src/config.js'])
@@ -46,18 +48,15 @@ gulp.task('scripts', function() {
   return gulp.src('src/app/**/*.js')
     .pipe(jshint())
     .pipe(jshint.reporter('default'))
+    .pipe(sourcemaps.init())
+    .pipe(babel({
+      presets: ['es2015']
+    }))
+    .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest('dist/app'))
     .pipe(notify({ message: 'Scripts task complete' }));
 });
 
-// Cities Config
-gulp.task('cities_config', function() {
-  return gulp.src('src/cities/*.json')
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'))
-    .pipe(gulp.dest('dist/cities'))
-    .pipe(notify({ message: 'Cities config task complete' }));
-});
 
 // Images
 gulp.task('images', function() {
@@ -84,7 +83,7 @@ gulp.task('copy-lib', function() {
 
 // Default task
 gulp.task('default', ['clean'], function() {
-    gulp.start('fileinclude', 'styles', 'scripts', 'images', 'templates', 'cities_config', 'copy-lib');
+    gulp.start('fileinclude', 'styles', 'scripts', 'images', 'templates', 'copy-lib');
 });
 
 gulp.task('connect', function() {
@@ -117,8 +116,6 @@ gulp.task('watch', function() {
 
   // Watch image files
   gulp.watch('src/images/**/*', ['images']);
-
-  gulp.watch('src/cities/*.json', ['cities_config']);
 
   // Watch any files in dist/, reload on change
   gulp.watch(['dist/**']).on('change', livereload.changed);
