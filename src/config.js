@@ -1,4 +1,4 @@
-{
+var EP_CONFIG = {
     "url_name": "seattle",
     "name": "Seattle Energy Benchmarking",
     "logo_link_url": "http://cityenergyproject.github.io/seattle/",
@@ -18,7 +18,7 @@
     ],
     "zoom": 12,
     "categoryDefaults": [],
-    "cartoDbUser": "cityenergy-seattle",
+    "cartoDbUser": "stamen-org",
     "property_id": "cartodb_id",
     "property_name": "property_name",
     "building_type": "property_type",
@@ -142,12 +142,12 @@
             "color_range": ["#1f5dbe","#599b67","#ffd552","#da863f","#ab2328"],
             "unit": "Kilograms CO₂e/ft²",
             "filter_range": {"min" : 0, "max" : 10},
-            "description": "The  total Greenhouse Gas (GHG) Emissions, divided by the floor area of the building, in kilograms of carbon dioxide equivalent (CO2e) per square foot."
+            "description": "The total Greenhouse Gas (GHG) Emissions, divided by the floor area of the building, in kilograms of carbon dioxide equivalent (CO2e) per square foot."
         }
     ],
     "years": {
         "2015": {
-            "table_name": "table_2015_stamen_phase_i_final",
+            "table_name": "test_building_data_20000",
             "default_layer": "energy_star_score"
         }
     }

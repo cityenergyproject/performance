@@ -63,7 +63,6 @@ define([
   }
 
   function cityBuildingsFilterizer(buildings, categories, ranges) {
-
     var normalizedCategories = normalizeCityBuildingCategories(categories);
     var normalizedRanges = normalizeCityBuildingRanges(ranges);
 
@@ -126,7 +125,7 @@ define([
     var rangeSql = this.toRangeSql();
     var categorySql = this.toCategorySql();
     var filterSql = rangeSql.concat(categorySql).join(' AND ');
-    var output = ["SELECT ST_X(the_geom) AS lng, ST_Y(the_geom) AS lat,* FROM " + table].concat(filterSql).filter(function(e) { return e.length > 0; });
+    var output = ["SELECT ST_X(the_geom) AS lng, ST_Y(the_geom) AS lat, * FROM " + table].concat(filterSql).filter(function(e) { return e.length > 0; });
     return output.join(" WHERE ");
   };
 

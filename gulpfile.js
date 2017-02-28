@@ -20,7 +20,7 @@ var gulp = require('gulp'),
     deploy = require('gulp-gh-pages');
 
 gulp.task('fileinclude', function() {
-  return  gulp.src(['src/index.html', 'src/iframe.html', 'src/CNAME'])
+  return  gulp.src(['src/index.html', 'src/iframe.html', 'src/CNAME', 'src/config.js'])
     .pipe(gulp.dest('dist'))
     .pipe(notify({ message: 'Index Copied' }));
 });

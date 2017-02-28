@@ -22,20 +22,26 @@ define([
       categories: {},
       filters: []
     },
+
     toQuery: function(){
       var query, attributes = this.pick(this.queryFields);
       query = $.param(attributes);
       return '?' + query;
     },
+
     toUrl: function(){
-      var path;
-      if (this.get('year')) {
-        path = "/" + this.get('url_name') + "/" + this.get('year') + this.toQuery();
+      var year = this.get('year'),
+          path;
+
+      if (year) {
+        path = "/" + year + this.toQuery();
       } else {
-        path = "/" + this.get('url_name') + this.toQuery();
+        path = "/" + this.toQuery();
       }
+
       return path;
     },
+
     asBuildings: function() {
       return new CityBuildings(null, this.pick('tableName', 'cartoDbUser'));
     }
@@ -66,6 +72,7 @@ define([
         layer = this.toLayer(year);
 
     return {
+      url_name: this.city.url_name,
       year: year,
       cartoDbUser: this.city.cartoDbUser,
       tableName: this.city.years[year].table_name,
@@ -80,57 +87,55 @@ define([
     state: new RouterState({}),
     routes:{
         "": "root",
-        ":cityname": "city",
-        ":cityname/": "city",
-        ":cityname/:year": "year",
-        ":cityname/:year/": "year",
-        ":cityname/:year?:params": "year",
-        ":cityname/:year/?:params": "year",
+        ":year": "year",
+        ":year/": "year",
+        ":year?:params": "year",
+        ":year/?:params": "year",
     },
-    //  w table view = 12s
-    //  w/o = ~2.5s
+
     initialize: function(){
+      //var m = new Backbone.Model(EP_CONFIG);
       var activityIndicator = new ActivityIndicator({state: this.state});
-      // var headerView = new HeaderView({state: this.state});
+      // // var headerView = new HeaderView({state: this.state});
       var yearControlView = new YearControlView({state: this.state});
       var mapView = new MapView({state: this.state});
       var addressSearchView = new AddressSearchView({mapView: mapView, state: this.state});
-      var comparisonView = new BuildingComparisonView({state: this.state});
-      // var footerView = new FooterView({state: this.state});
+      //var comparisonView = new BuildingComparisonView({state: this.state});
+      // // var footerView = new FooterView({state: this.state});
 
       this.state.on('change', this.onChange, this);
+      this.createCityModel();
     },
     onChange: function(){
       var changed = _.keys(this.state.changed);
 
-      if (_.contains(changed, 'url_name')){
-        this.onCityChange();
-      } else if (_.contains(changed, 'year')) {
+      if (_.contains(changed, 'year')) {
         this.onYearChange();
       }
 
       this.navigate(this.state.toUrl(), {trigger: false, replace: true});
     },
 
-    onCityChange: function(){
-      this.state.trigger("showActivityLoader");
-      var city = new CityModel(this.state.pick('url_name', 'year'));
-      city.fetch({success: _.bind(this.onCitySync, this)});
-
+    createCityModel: function(){
+      var city = CityModel(EP_CONFIG);
+      this.onCityCreation(city, EP_CONFIG);
     },
 
     onYearChange: function() {
-      var year = this.state.get('year');
+      var current = this.state.get('year');
       var previous = this.state.previous('year');
 
       // skip undefined since it's most likely the
       // user came to the site w/o a hash state
       if (typeof previous === 'undefined') return;
 
-      this.onCityChange();
+      // Mostly likely will never occur
+      if (previous === current) return;
+
+      this.createCityModel();
     },
 
-    onCitySync: function(city, results) {
+    onCityCreation: function(city, results) {
       var year = this.state.get('year'),
           layer = this.state.get('layer'),
           newState = new StateBuilder(results, year, layer).toState(),
@@ -138,7 +143,6 @@ define([
           mapState = this.state.pick('lat', 'lng', 'zoom');
 
       _.defaults(mapState, defaultMapState);
-
       // set this to silent because we need to load buildings
       this.state.set(_.extend({city: city}, newState, mapState));
 
@@ -146,6 +150,7 @@ define([
     },
 
     fetchBuildings: function() {
+      this.state.trigger('showActivityLoader');
       this.allBuildings = this.state.asBuildings();
       this.listenToOnce(this.allBuildings, 'sync', this.onBuildingsSync, this);
 
@@ -154,21 +159,16 @@ define([
 
     onBuildingsSync: function() {
       this.state.set({allbuildings: this.allBuildings});
-      this.state.trigger("hideActivityLoader");
+      this.state.trigger('hideActivityLoader');
     },
 
     root: function () {
-      // TODO: the path should come from config
-      this.navigate('/seattle', {trigger: true, replace: true});
+      //this.navigate('/', {trigger: true, replace: true});
     },
 
-    city: function(cityname){
-      this.state.set({url_name: cityname});
-    },
-
-    year: function(cityname, year, params){
+    year: function(year, params){
       params = params ? deparam(params) : {};
-      this.state.set(_.extend({}, params, {url_name: cityname, year: year}));
+      this.state.set(_.extend({}, params, {year: year}));
     }
   });
 
