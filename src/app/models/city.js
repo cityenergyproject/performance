@@ -3,5 +3,5 @@ define([
 ], function(Backbone) {
   return function(config) {
     return new Backbone.Model(config);
-  }
+  };
 });

@@ -6,8 +6,8 @@ define([
     this.ascending = ascending;
   }
 
-  BuildingComparator.prototype.isNumber = function(obj){
-    return parseFloat(obj) !== NaN;
+  BuildingComparator.prototype.isNumber = function(num){
+    return !isNaN(parseFloat(num));
   };
 
   BuildingComparator.prototype.compareString = function(a, b, ascending){

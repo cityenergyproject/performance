@@ -96,40 +96,42 @@ define([
   };
 
   BuildingMetricCalculator.prototype.renderField = function(field) {
-    var fieldName = field.field_name,
-        gradients = this.gradientCalculators[fieldName],
-        slices = field.range_slice_count,
-        aspectRatio = 4/1;
-        gradientStops = gradients.toGradientStops(),
-        filterRange = field.filter_range,
-        bucketCalculator = new BuildingBucketCalculator(this.buildings, fieldName, slices, filterRange),
-        value = this.currentBuilding.get(fieldName),
-        currentColor = gradients.toColor(value),
-        buckets = bucketCalculator.toBuckets(),
-        bucketGradients = _.map(gradientStops, function(stop, bucketIndex){
-          return {
-            current: _.indexOf(gradientStops, currentColor),
-            color: stop,
-            count: buckets[bucketIndex] || 0
-          };
-        }),
-        histogram = new HistogramView({
-          gradients: bucketGradients,
-          slices: slices,
-          aspectRatio: aspectRatio,
-          filterRange: [filterRange.min, filterRange.max],
-          quantileScale: gradients.colorGradient().copy()
-        });
-    return histogram;
+    let fieldName = field.field_name;
+    let gradients = this.gradientCalculators[fieldName];
+    let slices = field.range_slice_count;
+    let aspectRatio = 4/1;
+    let gradientStops = gradients.toGradientStops();
+    let filterRange = field.filter_range;
+    let bucketCalculator = new BuildingBucketCalculator(this.buildings, fieldName, slices, filterRange);
+    let value = this.currentBuilding.get(fieldName);
+    let currentColor = gradients.toColor(value);
+    let buckets = bucketCalculator.toBuckets();
+
+    let bucketGradients = _.map(gradientStops, (stop, bucketIndex) => {
+      return {
+        current: _.indexOf(gradientStops, currentColor),
+        color: stop,
+        count: buckets[bucketIndex] || 0
+      };
+    });
+
+
+    return new HistogramView({
+      gradients: bucketGradients,
+      slices: slices,
+      aspectRatio: aspectRatio,
+      filterRange: [filterRange.min, filterRange.max],
+      quantileScale: gradients.colorGradient().copy()
+    });
   };
 
   BuildingMetricCalculator.prototype.render = function(rowContainer) {
-    rowContainer.find('td.metric').each(_.bind(function(index, cell) {
-      var field = this.metricFields[index],
-          histogram = this.renderField(field);
+    rowContainer.find('td.metric').each((index, cell) => {
+      let field = this.metricFields[index];
+      let histogram = this.renderField(field);
 
       $(cell).find('.histogram').replaceWith(histogram.render());
-    }, this));
+    });
   };
 
   var MetricsValidator = function(cityFields, metrics, newField) {

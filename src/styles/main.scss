@@ -1,3 +1,7 @@
+// turn deprecation warnings from Bourbon
+$output-bourbon-deprecation-warnings: false !default;
+
+// vendor styles
 @import "bourbon";
 @import "base/base";
 @import "neat";
@@ -5,4 +9,6 @@
 @import "range-slider/skin";
 @import "../lib/toastr/toastr.min.css";
 @import "../lib/autocomplete/autocomplete.min.css";
+
+// app styles
 @import "main/index";

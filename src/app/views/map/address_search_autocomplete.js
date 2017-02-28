@@ -256,7 +256,7 @@ define([
 
         suggest(items);
 
-      }
+      };
     },
 
     maxReqTimestampRendered: new Date().getTime(),
@@ -305,7 +305,7 @@ define([
             callback(term, results.buildings, null);
           }
         }
-      })
+      });
     },
 
     getDistances: function(loc) {
@@ -345,7 +345,7 @@ define([
         closestBuildings = closestBuildings.concat(distances);
       });
 
-      closestBuildings = _.uniq(closestBuildings, false, function(item) { return item.id; })
+      closestBuildings = _.uniq(closestBuildings, false, function(item) { return item.id; });
       closestBuildings = _.sortBy(closestBuildings, 'd');
 
       closestBuildings = closestBuildings.slice(0,10);

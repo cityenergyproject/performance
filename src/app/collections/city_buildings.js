@@ -146,7 +146,7 @@ define([
       return data.rows;
     },
     toSql: function(categories, range){
-      return new CityBuildingQuery(this.tableName, categories, range).toSql()
+      return new CityBuildingQuery(this.tableName, categories, range).toSql();
     },
     toFilter: function(buildings, categories, ranges) {
       return cityBuildingsFilterizer(buildings, categories, ranges);

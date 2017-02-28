@@ -34,9 +34,9 @@ define([
           path;
 
       if (year) {
-        path = "/" + year + this.toQuery();
+        path = '/' + year + this.toQuery();
       } else {
-        path = "/" + this.toQuery();
+        path = '/' + this.toQuery();
       }
 
       return path;
@@ -80,17 +80,17 @@ define([
       sort: layer,
       order: 'desc',
       categories: this.city.categoryDefaults || [],
-    }
+    };
   };
 
   var Router = Backbone.Router.extend({
     state: new RouterState({}),
     routes:{
-        "": "root",
-        ":year": "year",
-        ":year/": "year",
-        ":year?:params": "year",
-        ":year/?:params": "year",
+        '': 'root',
+        ':year': 'year',
+        ':year/': 'year',
+        ':year?:params': 'year',
+        ':year/?:params': 'year',
     },
 
     initialize: function(){

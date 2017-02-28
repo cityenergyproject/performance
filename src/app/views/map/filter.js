@@ -19,6 +19,8 @@ define([
       this.layer = options.layer;
       this.allBuildings = options.allBuildings;
       this.state = options.state;
+
+      this.bucketCalculator = null;
       this.listenTo(this.state, 'change:layer', this.onLayerChange);
       //this.listenTo(this.state, 'change:filters', this.render);
     },
@@ -49,11 +51,17 @@ define([
           filterRange = this.layer.filter_range,
           rangeSliceCount = this.layer.range_slice_count,
           colorStops = this.layer.color_range,
-          buildings = this.allBuildings,
-          bucketCalculator = new BuildingBucketCalculator(buildings, fieldName, rangeSliceCount, filterRange),
-          extent = bucketCalculator.toExtent(),
-          gradientCalculator = new BuildingColorBucketCalculator(buildings, fieldName, rangeSliceCount, colorStops),
-          buckets = bucketCalculator.toBuckets(),
+          buildings = this.allBuildings;
+
+        if (!this.bucketCalculator) {
+          this.bucketCalculator = new BuildingBucketCalculator(buildings, fieldName, rangeSliceCount, filterRange);
+        }
+
+        var extent = this.bucketCalculator.toExtent(),
+          buckets = this.bucketCalculator.toBuckets();
+
+
+        var gradientCalculator = new BuildingColorBucketCalculator(buildings, fieldName, rangeSliceCount, colorStops),
           gradientStops = gradientCalculator.toGradientStops(),
           histogram, $filter,
           filterTemplate = _.template(FilterTemplate),

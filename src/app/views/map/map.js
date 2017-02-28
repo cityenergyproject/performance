@@ -66,17 +66,19 @@ define([
     },
 
     onMapChange: function() {
+      if (!this.leafletMap){ return; }
+
       var lat = this.state.get('lat'),
           lng = this.state.get('lng'),
           zoom = this.state.get('zoom');
-      if (!this.leafletMap){ return; }
+
       this.leafletMap.panTo(new L.LatLng(lat, lng));
       this.leafletMap.setZoom(zoom);
     },
 
     onBuildings: function(){
       var state = this.state;
-      var city = state.get('city');
+      var city = state.get('city'); // city model
       var layers = city.get('map_layers');
       var allBuildings = state.get('allbuildings');
 
@@ -85,19 +87,23 @@ define([
       $('#map-controls').empty();
 
       // close/remove any existing MapControlView(s)
-      this.controls && this.controls.each(function(view){
-        view.close();
-      });
+      if (this.controls && this.controls.each) {
+        this.controls.each(view => {
+          view.close();
+        });
+      }
+
 
       // recreate MapControlView(s)
-      this.controls = _.chain(layers).map(function(layer){
+      this.controls = _.chain(layers).map(layer => {
+
         var viewClass = {
           range: Filter,
           category: Category
         }[layer.display_type];
 
         return new viewClass({layer: layer, allBuildings: allBuildings, state: state});
-      }).each(function(view){ view.render(); });
+      }).each(view => { view.render(); });
 
       return this;
     }

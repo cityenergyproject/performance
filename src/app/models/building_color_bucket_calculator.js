@@ -44,23 +44,23 @@ define([
       return this.memoized.cartoCSS[this.fieldName];
     }
 
-    var stops = this.toGradientStops(),
-        fieldName = this.fieldName,
-        fieldValues = this.getFieldValues(),
-        gradient = this.colorGradient();
+    let stops = this.toGradientStops();
+    let fieldName = this.fieldName;
+    let fieldValues = this.getFieldValues();
+    let gradient = this.colorGradient();
     /*
     console.log('FieldName: ', fieldName);
     console.log("CartoCSS stops", stops);
     console.log("CartoCSS stops", _.map(stops, function(stop) { return gradient.invertExtent(stop);}));
     */
 
-    var css = this.memoized.cartoCSS[this.fieldName] = _.map(stops, function(stop){
+    this.memoized.cartoCSS[this.fieldName] = _.map(stops, stop => {
       var min = _.min(gradient.invertExtent(stop));
-      return "[" + fieldName + ">=" + min + "]{marker-fill:" + stop + "}";
+      return `[${fieldName}>=${min}]{marker-fill:${stop}}`;
     });
 
-    return css;
-  }
+    return this.memoized.cartoCSS[this.fieldName];
+  };
 
   BuildingColorBucketCalculator.prototype.getFieldValues = function() {
     if (this.memoized.fieldValues.hasOwnProperty(this.fieldName)) {
@@ -90,17 +90,17 @@ define([
     var scale = this.memoized.colorGradients[this.fieldName] = d3.scale.quantile().domain(fieldValues).range(stops);
 
     return scale;
-  }
+  };
 
   // Calculated in constructor
   BuildingColorBucketCalculator.prototype.toBucketStops = function() {
     return this.memoized.bucketStops;
-  }
+  };
 
   // Calculated in constructor
   BuildingColorBucketCalculator.prototype.toGradientStops = function() {
     return this.memoized.gradientStops;
-  }
+  };
 
   BuildingColorBucketCalculator.prototype.toCartoCSS = function() {
     return this.cartoCSS();

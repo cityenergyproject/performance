@@ -7,6 +7,8 @@ define([
     this.fieldName = fieldName;
     this.buckets = buckets;
     this.filterRange = filterRange || {};
+
+    this.memoized = {};
   };
 
   BuildingBucketCalculator.prototype.getScale = function() {
@@ -22,11 +24,16 @@ define([
   };
 
   BuildingBucketCalculator.prototype.toExtent = function() {
+    if (this.memoized.toExtent) return this.memoized.toExtent;
+
     var fieldValues = this.buildings.pluck(this.fieldName),
         extent = d3.extent(fieldValues),
         min = this.filterRange.min,
         max = this.filterRange.max;
-    return [min || extent[0], max || extent[1]];
+
+    this.memoized.toExtent = [min || extent[0], max || extent[1]];
+
+    return this.memoized.toExtent;
   };
 
   // Allow for extent & scale to be passed in,
@@ -39,18 +46,21 @@ define([
   };
 
   BuildingBucketCalculator.prototype.toBuckets = function() {
+    if (this.memoized.toBuckets) return this.memoized.toBuckets;
     var self = this;
 
     var scale =  this.getScale();
     var extent = scale.domain();
 
-    return this.buildings.reduce(function(memo, building){
+    this.memoized.toBuckets = this.buildings.reduce((memo, building) => {
       var value = building.get(self.fieldName);
       if (!value) {return memo;}
       var scaled = self.toBucket(value, extent, scale);
       memo[scaled] = memo[scaled] + 1 || 1;
       return memo;
     }, {});
+
+    return this.memoized.toBuckets;
   };
 
   return BuildingBucketCalculator;
