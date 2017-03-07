@@ -22,6 +22,7 @@ var EP_CONFIG = {
     "property_id": "cartodb_id",
     "property_name": "property_name",
     "building_type": "property_type",
+    "fields_to_return": ["cartodb_id", "property_type", "property_name", "reported_address", "city", "state", "zip", "neighborhood", "councildistrict", "yearbuilt_string", "yearbuilt", "reported_gross_floor_area", "numbuildings", "numfloors", "numunits", "energy_star_score", "site_eui", "source_eui", "comments", "total_ghg_emissions", "total_ghg_emissions_intensity"],
     "popup_fields": [
         {"field": "property_name", "label": ""},
         {"field": "reported_address", "label": ""},

@@ -3,9 +3,8 @@ define([
   'underscore',
   'backbone',
   'collections/city_buildings',
-  'models/building_color_bucket_calculator',
   'text!templates/map/building_info.html'
-], function($, _, Backbone, CityBuildings, BuildingColorBucketCalculator, BuildingInfoTemplate){
+], function($, _, Backbone, CityBuildings, BuildingInfoTemplate){
 
   var baseCartoCSS = [
     '{marker-fill: #CCC;' +
@@ -87,12 +86,14 @@ define([
 
       // Listen for all changes but filter in the handler for these
       // attributes: layer, filters, categories, and tableName
-      this.listenTo(this.state, 'change', this.changeStateChecker);
+      //this.listenTo(this.state, 'change', this.changeStateChecker);
+
+      this.listenTo(this.state, 'change:modified_buildings', this.render);
 
       // building has a different handler
       this.listenTo(this.state, 'change:building', this.onBuildingChange);
       this.listenTo(this.state, 'clear_map_popups', this.onClearPopups);
-      this.listenTo(this.allBuildings, 'sync', this.render);
+      //this.listenTo(this.allBuildings, 'sync', this.render);
 
       var self = this;
       this.leafletMap.on('popupclose', function(e) {
@@ -146,12 +147,15 @@ define([
       });
     },
 
+    getBuildings: function() {
+      return this.state.get('modified_buildings');
+    },
 
     onBuildingChange: function() {
       if (!this.state.get('building')) return;
-
+      var buildings = this.getBuildings();
       var template = _.template(BuildingInfoTemplate),
-          presenter = new BuildingInfoPresenter(this.state.get('city'), this.allBuildings, this.state.get('building'));
+          presenter = new BuildingInfoPresenter(this.state.get('city'), buildings, this.state.get('building'));
 
       L.popup()
        .setLatLng(presenter.toLatLng())
@@ -186,12 +190,18 @@ define([
     },
 
     onStateChange: function(){
+      console.log('>>>>>> State Change');
       // TODO: should not be mutating the buildings model.
       _.extend(this.allBuildings, this.state.pick('tableName', 'cartoDbUser'));
       this.allBuildings.fetch();
     },
 
+    buildingsModified: function() {
+      console.log('>>>>> BUILDINGS MOD')
+    },
+
     changeStateChecker: function() {
+      // this.buildings = this.allBuildings.toFilter(this.allBuildings, this.state.get('categories'), this.state.get('filters'));
       // filters change
       if (this.state._previousAttributes.filters !== this.state.attributes.filters) {
         return this.onStateChange();
@@ -213,18 +223,21 @@ define([
 
 
     toCartoSublayer: function(){
-      var buildings = this.allBuildings,
-          state = this.state,
-          city = state.get('city'),
-          fieldName = state.get('layer'),
-          cityLayer = _.findWhere(city.get('map_layers'), {field_name: fieldName}),
-          buckets = cityLayer.range_slice_count,
-          colorStops = cityLayer.color_range,
-          calculator = new BuildingColorBucketCalculator(buildings, fieldName, buckets, colorStops),
-          stylesheet = new CartoStyleSheet(buildings.tableName, calculator);
+      // Need to pass allbuildings here so ColorBucketCalculator functions properly
+      var buildings = this.state.get('allbuildings');
+      var buildingColorBucketManager = this.state.get('buildingColorBucketManager');
+
+      var state = this.state;
+      var city = state.get('city');
+      var fieldName = state.get('layer');
+      var cityLayer = _.findWhere(city.get('map_layers'), {field_name: fieldName});
+      var buckets = cityLayer.range_slice_count;
+      var colorStops = cityLayer.color_range;
+      var calculator = buildingColorBucketManager.get(buildings, fieldName, buckets, colorStops);
+      var stylesheet = new CartoStyleSheet(buildings.tableName, calculator);
 
       return {
-        sql: buildings.toSql(state.get('categories'), state.get('filters')),
+        sql: buildings.toSql(state.get('categories'), state.get('filters'), true),
         cartocss: stylesheet.toCartoCSS(),
         interactivity: this.state.get('city').get('property_id')
       };
@@ -239,9 +252,11 @@ define([
       // skip if we are loading `cartoLayer`
       if (this.cartoLoading) return;
 
+      var buildings = this.getBuildings();
+
       this.cartoLoading = true;
       cartodb.createLayer(this.leafletMap, {
-        user_name: this.allBuildings.cartoDbUser,
+        user_name: buildings.cartoDbUser,
         type: 'cartodb',
         sublayers: [this.toCartoSublayer()]
       },{https: true}).addTo(this.leafletMap).on('done', this.onCartoLoad, this);

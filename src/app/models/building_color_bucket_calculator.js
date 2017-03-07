@@ -2,6 +2,7 @@ define([
   'underscore',
   'd3'
 ], function(_, d3) {
+
   var BuildingColorBucketCalculator = function(buildings, fieldName, buckets, colorStops) {
     this.buildings = buildings;
     this.fieldName = fieldName;
@@ -17,8 +18,6 @@ define([
     this.memoized.bucketStops = this.calcBucketStops();
     this.memoized.gradientStops = this.calcGradientStops();
   };
-
-
 
   BuildingColorBucketCalculator.prototype.calcBucketStops = function() {
     var range = this.colorStops,
@@ -112,5 +111,22 @@ define([
     return gradient(value);
   };
 
-  return BuildingColorBucketCalculator;
+  // return BuildingColorBucketCalculator;
+
+  var BuildingColorBucketManager = function() {
+    this.memoized = {};
+  }
+
+  BuildingColorBucketManager.prototype.get = function(buildings, fieldName, buckets, colorStops) {
+    if (this.memoized.hasOwnProperty(fieldName)) return this.memoized[fieldName];
+    this.memoized[fieldName] = new BuildingColorBucketCalculator(buildings, fieldName, buckets, colorStops);
+
+    return this.memoized[fieldName];
+  }
+
+  BuildingColorBucketManager.prototype.clear = function() {
+    this.memoized = {};
+  }
+
+  return BuildingColorBucketManager;
 });

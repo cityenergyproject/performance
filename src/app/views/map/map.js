@@ -82,7 +82,6 @@ define([
       var layers = city.get('map_layers');
       var allBuildings = state.get('allbuildings');
 
-
       $('#map-category-controls').empty();
       $('#map-controls').empty();
 
@@ -92,7 +91,6 @@ define([
           view.close();
         });
       }
-
 
       // recreate MapControlView(s)
       this.controls = _.chain(layers).map(layer => {

@@ -6,6 +6,8 @@ define([
   'underscore',
   'backbone',
   'models/city',
+  'models/building_color_bucket_calculator',
+  'models/building_bucket_calculator',
   'collections/city_buildings',
   'views/layout/header',
   'views/layout/footer',
@@ -14,7 +16,7 @@ define([
   'views/map/year_control',
   'views/building_comparison/building_comparison',
   'views/layout/activity_indicator',
-], function($, deparam, _, Backbone, CityModel, CityBuildings, HeaderView, FooterView, MapView, AddressSearchView, YearControlView, BuildingComparisonView, ActivityIndicator) {
+], function($, deparam, _, Backbone, CityModel, BuildingColorBucketManager, BuildingBucketManager, CityBuildings, HeaderView, FooterView, MapView, AddressSearchView, YearControlView, BuildingComparisonView, ActivityIndicator) {
   var RouterState = Backbone.Model.extend({
     queryFields: ['filters', 'categories', 'layer', 'metrics', 'sort', 'order', 'lat', 'lng', 'zoom', 'building'],
     defaults: {
@@ -24,19 +26,19 @@ define([
     },
 
     toQuery: function(){
-      var query, attributes = this.pick(this.queryFields);
-      query = $.param(attributes);
-      return '?' + query;
+      let attributes = this.pick(this.queryFields);
+      let query = $.param(attributes);
+      return `?${query}`;
     },
 
     toUrl: function(){
-      var year = this.get('year'),
-          path;
+      let year = this.get('year');
+      let path;
 
       if (year) {
-        path = '/' + year + this.toQuery();
+        path = `/${year}${this.toQuery()}`;
       } else {
-        path = '/' + this.toQuery();
+        path = `/${year}`;
       }
 
       return path;
@@ -54,22 +56,24 @@ define([
   };
 
   StateBuilder.prototype.toYear = function() {
-    var currentYear = this.year;
-    var availableYears = _.chain(this.city.years).keys().sort();
-    var defaultYear = availableYears.last().value();
+    let currentYear = this.year;
+    let availableYears = _.chain(this.city.years).keys().sort();
+    let defaultYear = availableYears.last().value();
+
     return availableYears.contains(currentYear).value() ? currentYear : defaultYear;
   };
 
   StateBuilder.prototype.toLayer = function(year) {
-    var currentLayer = this.layer;
-    var availableLayers = _.chain(this.city.map_layers).pluck('field_name');
-    var defaultLayer = this.city.years[year].default_layer;
+    let currentLayer = this.layer;
+    let availableLayers = _.chain(this.city.map_layers).pluck('field_name');
+    let defaultLayer = this.city.years[year].default_layer;
+
     return availableLayers.contains(currentLayer).value() ? currentLayer : defaultLayer;
   };
 
   StateBuilder.prototype.toState = function() {
-    var year = this.toYear(),
-        layer = this.toLayer(year);
+    let year = this.toYear();
+    let layer = this.toLayer(year);
 
     return {
       url_name: this.city.url_name,
@@ -80,6 +84,8 @@ define([
       sort: layer,
       order: 'desc',
       categories: this.city.categoryDefaults || [],
+      buildingColorBucketManager: new BuildingColorBucketManager(),
+      buildingBucketManager: new BuildingBucketManager()
     };
   };
 
@@ -94,7 +100,9 @@ define([
     },
 
     initialize: function(){
-      //var m = new Backbone.Model(EP_CONFIG);
+      // check to see if configuration file is there....
+      if (typeof EP_CONFIG === 'undefined') throw new Error('Missing configuration file!');
+
       var activityIndicator = new ActivityIndicator({state: this.state});
       // // var headerView = new HeaderView({state: this.state});
       var yearControlView = new YearControlView({state: this.state});
@@ -109,30 +117,48 @@ define([
     onChange: function(){
       var changed = _.keys(this.state.changed);
 
-      if (_.contains(changed, 'year')) {
-        this.onYearChange();
-      }
-
       this.navigate(this.state.toUrl(), {trigger: false, replace: true});
+
+      // year changes load new data from Carto
+      if (_.contains(changed, 'year') && this.yearsDirty()) {
+        console.log('>>> Change: Year >>>');
+        this.onYearChange();
+      } else {
+
+        // Filter & category changes modify current building data...
+        if (this.state._previousAttributes.filters !== this.state.attributes.filters) {
+          console.log('>>> Change: Filters >>>');
+          this.onBuildingModifiersChange();
+        }
+
+        if (this.state._previousAttributes.categories !== this.state.attributes.categories) {
+          console.log('>>> Change: Categories >>>');
+          this.onBuildingModifiersChange();
+        }
+      }
     },
 
-    createCityModel: function(){
-      var city = CityModel(EP_CONFIG);
-      this.onCityCreation(city, EP_CONFIG);
-    },
-
-    onYearChange: function() {
+    yearsDirty: function() {
       var current = this.state.get('year');
       var previous = this.state.previous('year');
 
       // skip undefined since it's most likely the
       // user came to the site w/o a hash state
-      if (typeof previous === 'undefined') return;
+      if (typeof previous === 'undefined') return false;
 
       // Mostly likely will never occur
-      if (previous === current) return;
+      if (previous === current) return false;
 
+      return true;
+    },
+
+    onYearChange: function() {
       this.createCityModel();
+    },
+
+    createCityModel: function(){
+      var city = CityModel(EP_CONFIG);
+      this.onCityCreation(city, EP_CONFIG);
     },
 
     onCityCreation: function(city, results) {
@@ -152,13 +178,36 @@ define([
     fetchBuildings: function() {
       this.state.trigger('showActivityLoader');
       this.allBuildings = this.state.asBuildings();
+
+      this.allBuildings.sqlReturnFields(EP_CONFIG.fields_to_return || '*');
+
       this.listenToOnce(this.allBuildings, 'sync', this.onBuildingsSync, this);
 
       this.allBuildings.fetch();
     },
 
+    modifyBuildings: function(buildings) {
+      if (!buildings) return null;
+
+      var b = buildings.toFilter(buildings, this.state.get('categories'), this.state.get('filters'));
+      return new CityBuildings(b, this.state.pick('tableName', 'cartoDbUser'));
+    },
+
+    onBuildingModifiersChange: function() {
+      var buildings = this.state.get('allbuildings');
+      if (!buildings) return;
+
+      this.state.set({
+        modified_buildings: this.modifyBuildings(buildings)
+      });
+    },
+
     onBuildingsSync: function() {
-      this.state.set({allbuildings: this.allBuildings});
+      this.state.set({
+        allbuildings: this.allBuildings,
+        modified_buildings: this.modifyBuildings(this.allBuildings)
+      });
+
       this.state.trigger('hideActivityLoader');
     },
 

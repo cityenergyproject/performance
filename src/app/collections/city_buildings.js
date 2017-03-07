@@ -88,10 +88,11 @@ define([
     });
   }
 
-  var CityBuildingQuery = function(table_name, categories, ranges) {
+  var CityBuildingQuery = function(table_name, categories, ranges, returnFields) {
     this.tableName = table_name;
     this.categories = categories;
     this.ranges = ranges;
+    this.returnFields = returnFields;
   };
 
   CityBuildingQuery.prototype.toRangeSql = function() {
@@ -120,12 +121,25 @@ define([
     });
   };
 
+  CityBuildingQuery.prototype.sqlReturnFields = function() {
+    var fields;
+
+    if (_.isArray(this.returnFields)) {
+      fields = this.returnFields.join(',');
+    } else {
+      fields = this.returnFields;
+    }
+
+    return "SELECT ST_X(the_geom) AS lng, ST_Y(the_geom) AS lat," + fields;
+  };
+
   CityBuildingQuery.prototype.toSql = function() {
     var table = this.tableName;
+    var returnFields = this.sqlReturnFields();
     var rangeSql = this.toRangeSql();
     var categorySql = this.toCategorySql();
     var filterSql = rangeSql.concat(categorySql).join(' AND ');
-    var output = ["SELECT ST_X(the_geom) AS lng, ST_Y(the_geom) AS lat, * FROM " + table].concat(filterSql).filter(function(e) { return e.length > 0; });
+    var output = [returnFields + " FROM " + table].concat(filterSql).filter(function(e) { return e.length > 0; });
     return output.join(" WHERE ");
   };
 
@@ -133,6 +147,10 @@ define([
     initialize: function(models, options){
       this.tableName = options.tableName;
       this.cartoDbUser = options.cartoDbUser;
+      this.returnFields = '*';
+    },
+    sqlReturnFields: function(fields) {
+      this.returnFields = fields;
     },
     url: function() {
       return urlTemplate(this);
@@ -145,8 +163,8 @@ define([
     parse: function(data){
       return data.rows;
     },
-    toSql: function(categories, range){
-      return new CityBuildingQuery(this.tableName, categories, range).toSql();
+    toSql: function(categories, range, allFields){
+      return new CityBuildingQuery(this.tableName, categories, range, allFields ? '*': this.returnFields).toSql();
     },
     toFilter: function(buildings, categories, ranges) {
       return cityBuildingsFilterizer(buildings, categories, ranges);

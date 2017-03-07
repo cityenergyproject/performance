@@ -3,13 +3,11 @@ define([
   'underscore',
   'backbone',
   'ionrangeslider',
-  'models/building_bucket_calculator',
-  'models/building_color_bucket_calculator',
   'views/charts/histogram',
   'text!templates/map_controls/filter_section_header.html',
   'text!templates/map_controls/filter.html',
   'text!templates/map_controls/filter_container.html'
-], function($, _, Backbone, Ion, BuildingBucketCalculator, BuildingColorBucketCalculator, HistogramView, FilterSectionHeader, FilterTemplate, FilterContainer){
+], function($, _, Backbone, Ion, HistogramView, FilterSectionHeader, FilterTemplate, FilterContainer){
 
   var MapControlView = Backbone.View.extend({
     className: "map-control",
@@ -20,15 +18,15 @@ define([
       this.allBuildings = options.allBuildings;
       this.state = options.state;
 
-      this.bucketCalculator = null;
       this.listenTo(this.state, 'change:layer', this.onLayerChange);
       //this.listenTo(this.state, 'change:filters', this.render);
     },
 
     onLayerChange: function(){
-      var fieldName = this.layer.field_name,
-          currentLayer = this.state.get('layer'),
-          isCurrent = currentLayer == fieldName;
+      let fieldName = this.layer.field_name;
+      let currentLayer = this.state.get('layer');
+      let isCurrent = currentLayer == fieldName;
+
       this.$el.toggleClass('current', isCurrent);
       this.$section().toggleClass('current', this.$section().find('.current').length > 0);
     },
@@ -41,36 +39,37 @@ define([
     render: function(isUpdate){
       isUpdate = isUpdate || false;
 
-      var template = _.template(FilterContainer),
-          fieldName = this.layer.field_name,
-          safeFieldName = fieldName.toLowerCase().replace(/\s/g, "-"),
-          $el = $('#' + safeFieldName),
-          currentLayer = this.state.get('layer'),
-          isCurrent = currentLayer == fieldName,
-          $section = this.$section(),
-          filterRange = this.layer.filter_range,
-          rangeSliceCount = this.layer.range_slice_count,
-          colorStops = this.layer.color_range,
-          buildings = this.allBuildings;
+      let template = _.template(FilterContainer);
+      let fieldName = this.layer.field_name;
+      let safeFieldName = fieldName.toLowerCase().replace(/\s/g, "-");
+      let $el = $('#' + safeFieldName);
+      let currentLayer = this.state.get('layer');
+      let isCurrent = currentLayer == fieldName;
+      let $section = this.$section();
+      let filterRange = this.layer.filter_range;
+      let rangeSliceCount = this.layer.range_slice_count;
+      let colorStops = this.layer.color_range;
+      let buildings = this.allBuildings;
 
-        if (!this.bucketCalculator) {
-          this.bucketCalculator = new BuildingBucketCalculator(buildings, fieldName, rangeSliceCount, filterRange);
-        }
+      let buildingBucketManager = this.state.get('buildingBucketManager');
+      let bucketCalculator = buildingBucketManager.get(buildings, fieldName, rangeSliceCount, filterRange);
 
-        var extent = this.bucketCalculator.toExtent(),
-          buckets = this.bucketCalculator.toBuckets();
+      let extent = bucketCalculator.toExtent();
+      let buckets = bucketCalculator.toBuckets();
 
+      let buildingColorBucketManager = this.state.get('buildingColorBucketManager');
+      let gradientCalculator = buildingColorBucketManager.get(buildings, fieldName, rangeSliceCount, colorStops);
 
-        var gradientCalculator = new BuildingColorBucketCalculator(buildings, fieldName, rangeSliceCount, colorStops),
-          gradientStops = gradientCalculator.toGradientStops(),
-          histogram, $filter,
-          filterTemplate = _.template(FilterTemplate),
-          stateFilters = this.state.get('filters'),
-          filterState = _.findWhere(stateFilters, {field: fieldName}) || {min: extent[0], max: extent[1]},
-          filterRangeMin = (filterRange && filterRange.min) ? filterRange.min : extent[0],
-          filterRangeMax = (filterRange && filterRange.max) ? filterRange.max : extent[1];
+      let gradientStops = gradientCalculator.toGradientStops();
+      let histogram;
+      let $filter;
+      let filterTemplate = _.template(FilterTemplate);
+      let stateFilters = this.state.get('filters');
+      let filterState = _.findWhere(stateFilters, {field: fieldName}) || {min: extent[0], max: extent[1]};
+      let filterRangeMin = (filterRange && filterRange.min) ? filterRange.min : extent[0];
+      let filterRangeMax = (filterRange && filterRange.max) ? filterRange.max : extent[1];
 
-      var bucketGradients = _.map(gradientStops, function(stop, bucketIndex){
+      let bucketGradients = _.map(gradientStops, function(stop, bucketIndex){
         return {
           color: stop,
           count: buckets[bucketIndex] || 0
@@ -97,6 +96,7 @@ define([
           prettify: this.onPrettifyHandler(filterRangeMin, filterRangeMax),
           onFinish: _.bind(this.onFilterFinish, this),
         });
+
         this.$filter = this.$slider.data("ionRangeSlider");
       }
 
@@ -119,44 +119,53 @@ define([
       this.$el.find('.chart').html(this.histogram.render());
 
       this.$el.toggleClass('current', isCurrent);
-      if(isCurrent || $section.find('.current').length > 0) { $section.find('input').prop('checked', true); }
+
+      if (isCurrent || $section.find('.current').length > 0) {
+        $section.find('input').prop('checked', true);
+      }
+
       $section.toggleClass('current', isCurrent || $section.find('.current').length > 0);
 
       if (!isUpdate){
        $section.find('.category-control-container').append(this.$el);
-      }
-      else{
-        var positionInCategory;
-        $section.find('.category-control-container > .map-control').each(function(index, el){
-                if ($(el).attr('id') === this.layer.field_name){
-                  positionInCategory = index;
-                }
-               }.bind(this));
+      } else {
+        let positionInCategory;
+        $section
+          .find('.category-control-container > .map-control')
+          .each((index, el) => {
+            if ($(el).attr('id') === this.layer.field_name){
+              positionInCategory = index;
+            }
+          });
 
         switch(positionInCategory){
           case 0:
-              $section.find('.category-control-container').prepend(this.$el);
-              break;
+            $section.find('.category-control-container').prepend(this.$el);
+            break;
           default:
-              $section.find(".category-control-container > div:nth-child(" + positionInCategory + ")").after(this.$el);
+            $section
+              .find(`.category-control-container > div:nth-child(${positionInCategory})`)
+              .after(this.$el);
         }
       }
 
       return this;
     },
     onFilterFinish: function(rangeSlider) {
-      var filters = this.state.get('filters'),
-          fieldName = this.layer.field_name;
+      let filters = this.state.get('filters');
+      let fieldName = this.layer.field_name;
 
       filters = _.reject(filters, function(f){ return f.field == fieldName; });
 
       if (rangeSlider.from !== rangeSlider.min || rangeSlider.to !== rangeSlider.max){
-        var newFilter = {field: fieldName};
+        let newFilter = {field: fieldName};
+
         // Only include min or max in the filter if it is different from the rangeSlider extent.
         // This is important to the rangeSlider can clip the extreme values off, but we don't
         // want to use the rangeSlider extents to filter the data on the map.
         if (rangeSlider.from !== rangeSlider.min) newFilter.min = rangeSlider.from;
         if (rangeSlider.to   !== rangeSlider.max) newFilter.max = rangeSlider.to;
+
         filters.push(newFilter);
       }
 
@@ -169,7 +178,7 @@ define([
       return function(num) {
         switch(num) {
           case min: return num.toLocaleString();
-          case max: return num.toLocaleString() + "+";
+          case max: return num.toLocaleString() + '+';
           default: return num.toLocaleString();
         }
       };
@@ -181,7 +190,7 @@ define([
     },
 
     showLayer: function(){
-      var fieldName = this.layer.field_name;
+      let fieldName = this.layer.field_name;
       this.state.set({layer: fieldName, sort: fieldName, order: 'desc'});
     },
 
@@ -191,12 +200,12 @@ define([
     },
 
     $section: function(){
-      var sectionName = this.layer.section,
-          safeSectionName = sectionName.toLowerCase().replace(/\s/g, "-"),
-          $sectionEl = $("#" + safeSectionName),
-        template = _.template(FilterSectionHeader);
+      let sectionName = this.layer.section;
+      let safeSectionName = sectionName.toLowerCase().replace(/\s/g, "-");
+      let $sectionEl = $("#" + safeSectionName);
+      let template = _.template(FilterSectionHeader);
 
-      if ($sectionEl.length > 0){ return $sectionEl; }
+      if ($sectionEl.length > 0) { return $sectionEl; }
 
       $sectionEl = $(template({category: sectionName})).appendTo(this.$container);
 
@@ -205,5 +214,4 @@ define([
   });
 
   return MapControlView;
-
 });

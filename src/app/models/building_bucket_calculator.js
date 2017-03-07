@@ -63,5 +63,21 @@ define([
     return this.memoized.toBuckets;
   };
 
-  return BuildingBucketCalculator;
+  // Manage the creation of bucket calculator
+  var BuildingBucketManager = function() {
+    this.memoized = {};
+  }
+
+  BuildingBucketManager.prototype.get = function(buildings, fieldName, buckets, filterRange) {
+    if (this.memoized.hasOwnProperty(fieldName)) return this.memoized[fieldName];
+    this.memoized[fieldName] = new BuildingBucketCalculator(buildings, fieldName, buckets, filterRange);
+
+    return this.memoized[fieldName];
+  }
+
+  BuildingBucketManager.prototype.clear = function() {
+    this.memoized = {};
+  }
+
+  return BuildingBucketManager;
 });
